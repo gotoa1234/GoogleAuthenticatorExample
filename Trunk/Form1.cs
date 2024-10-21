@@ -1,11 +1,12 @@
 ﻿using Google.Authenticator;
+using OtpNet;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Base32Encoding = OtpNet.Base32Encoding;
 
 namespace GoogleAuthenticatorExample
 {
@@ -24,7 +25,7 @@ namespace GoogleAuthenticatorExample
         {
             InitializeComponent();
         }
-    
+
         private void Form1_Load(object sender, EventArgs e)
         {
             textBox_account.Text = _account;
@@ -32,7 +33,7 @@ namespace GoogleAuthenticatorExample
         }
 
         #region Button Event
-        
+
         private void button_Generator_Click(object sender, EventArgs e)
         {
             CreateSecretKeyAndQrCode();
@@ -46,9 +47,9 @@ namespace GoogleAuthenticatorExample
         /// <param name="e"></param>
         private void button_Validate_Click(object sender, EventArgs e)
         {
-            textBox_ValidateMessage.Text = 
+            textBox_ValidateMessage.Text =
                 "Search Key :" + textBox_SecretKey.Text + Environment.NewLine +
-                "驗證結果 : " + ValidateGoogleAuthCode() + Environment.NewLine ;
+                "驗證結果 : " + ValidateGoogleAuthCode() + Environment.NewLine;
         }
 
         private static string _lastCurrentCode = "";
@@ -77,6 +78,41 @@ namespace GoogleAuthenticatorExample
                 }
                 //排序
                 dataGridView_KeyCode.Sort(dataGridView_KeyCode.Columns["GeneratorDateTime"], System.ComponentModel.ListSortDirection.Descending);
+            }
+        }
+
+        /// <summary>
+        /// 取得當前的手動金鑰密碼
+        /// </summary>
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DataGridViewRow row = (DataGridViewRow)dataGridView_ManualKeyCode.RowTemplate.Clone();
+            var currentCodeList = this.GeneratorCurrentCode().Take(1);
+            var takeSingle = currentCodeList.Take(1).First();//取一筆做為比較
+            if (_lastCurrentCode != takeSingle)
+            {
+                _lastCurrentCode = takeSingle;
+                var currentDateTimeNow = DateTime.Now;
+                foreach (var code in currentCodeList)
+                {
+                    dataGridView_ManualKeyCode.Rows.Add(
+                        currentDateTimeNow.ToString("yyyy/MM/d HH:mm:ss"),
+                        string.Empty,
+                        Manual_textBox.Text,
+                        code);
+                }
+                //排序
+                dataGridView_ManualKeyCode.Sort(dataGridView_ManualKeyCode.Columns["GeneratorDateTimeManual"], System.ComponentModel.ListSortDirection.Descending);
+            }
+
+            List<string> GeneratorCurrentCode()
+            {
+                var secretBytes = Base32Encoding.ToBytes(Manual_textBox.Text);
+                var totp = new Totp(secretBytes);
+                // 獲取當前的 OTP 密碼
+                string currentOtp = totp.ComputeTotp();
+                var resultList = new List<string>() { currentOtp };
+                return resultList;
             }
         }
 
@@ -125,8 +161,7 @@ namespace GoogleAuthenticatorExample
             return isRight ? "驗證正確" : "錯誤";
         }
 
+
         #endregion
-
-
     }
 }
